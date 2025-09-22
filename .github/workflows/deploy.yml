@@ -19,12 +19,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      # Con cache SOLO si existe package-lock.json
+      - name: Setup Node (cached)
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # usa cache si hay lockfile
+          cache: npm
 
-      # usa npm ci si existe package-lock.json; si no, npm install
+      # Sin cache si NO hay lockfile (evita el error)
+      - name: Setup Node (no cache)
+        if: ${{ hashFiles('package-lock.json') == '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Install deps (ci if lockfile, else install)
         run: |
           if [ -f package-lock.json ]; then
@@ -36,16 +45,15 @@ jobs:
       - name: Build
         run: npm run build
 
-      # SPA fallback para GH Pages (evita 404 en rutas internas)
       - name: SPA 404 fallback
         run: |
-          mkdir -p dist
-          cp dist/index.html dist/404.html
+          mkdir -p build
+          cp build/index.html build/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: build
 
   deploy:
     needs: build
